@@ -1,32 +1,101 @@
-# React + TypeScript + Vite
+# Resource Allocation System — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> Giao diện người dùng cho hệ thống quản lý phân bổ nguồn lực.  
+> Xây dựng bằng **React 19 + TypeScript + Vite 8**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Yêu cầu hệ thống
 
-## React Compiler
+- **Node.js** 18+ (khuyến nghị 20+)
+- **npm** (đi kèm Node.js)
+- Backend BE đã chạy tại `http://localhost:8080` (xem `resource_allocation_be/README.md`)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the Oxlint configuration
+## Cấu trúc thư mục
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+src/
+├── pages/
+│   ├── Dashboard.tsx        # Trang tổng quan (reports)
+│   ├── Employees.tsx        # Quản lý nhân viên
+│   ├── Projects.tsx         # Quản lý dự án
+│   ├── Allocations.tsx      # Quản lý phân bổ
+│   └── AiAssistant.tsx      # AI Assistant (bonus)
+├── services/
+│   └── api.ts               # API client gọi BE
+├── assets/
+├── App.tsx
+└── main.tsx
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## Hướng dẫn chạy
+
+### 1. Cài đặt dependencies
+
+```bash
+npm install
+```
+
+### 2. Cấu hình API URL (nếu cần)
+
+Mặc định FE gọi BE tại `http://localhost:8080/api/v1`.  
+Nếu BE chạy cổng khác, sửa `src/services/api.ts`:
+
+```ts
+const BASE_URL = 'http://localhost:PORT/api/v1';
+```
+
+### 3. Chạy dev server
+
+```bash
+npm run dev
+```
+
+Truy cập: [http://localhost:5173](http://localhost:5173)
+
+### Build cho production
+
+```bash
+npm run build     # output trong dist/
+npm run preview   # xem thử bản build
+```
+
+---
+
+## Kết nối với Backend
+
+Trước khi dùng FE, cần chạy BE:
+
+```bash
+# Từ thư mục resource_allocation_be
+docker compose up -d postgres    # Khởi động DB
+./mvnw spring-boot:run           # Khởi động BE (cổng 8080)
+```
+
+---
+
+## Các trang chức năng
+
+| Route | Trang | Mô tả |
+|---|---|---|
+| `/` | Dashboard | Báo cáo utilization, available, overloaded |
+| `/employees` | Employees | CRUD nhân viên + xem workload |
+| `/projects` | Projects | CRUD dự án |
+| `/allocations` | Allocations | Phân bổ nhân sự vào dự án |
+| `/ai` | AI Assistant | Gợi ý tài nguyên & phát hiện rủi ro |
+
+---
+
+## Công nghệ sử dụng
+
+| Công nghệ | Mục đích |
+|---|---|
+| React 19 | UI framework |
+| TypeScript ~6.0 | Kiểm soát kiểu dữ liệu |
+| Vite 8 | Build tool & dev server |
+| lucide-react | Icon library |
+| Oxlint | Linter |
