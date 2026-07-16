@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, Allocation, AllocationPage, Employee, Project } from '../services/api';
-import { Plus, Search, Edit2, Trash2, Loader2, AlertCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Loader2, AlertCircle, X, ChevronLeft, ChevronRight, Check, Power } from 'lucide-react';
 
 export const Allocations: React.FC = () => {
   const [allocationsPage, setAllocationsPage] = useState<AllocationPage | null>(null);
@@ -147,6 +147,25 @@ export const Allocations: React.FC = () => {
     }
   };
 
+  const handleActivate = async (id: number) => {
+    try {
+      await api.activateAllocation(id);
+      fetchAllocations();
+    } catch (err: any) {
+      alert(err.message || 'Failed to activate allocation');
+    }
+  };
+
+  const handleEnd = async (id: number) => {
+    if (!window.confirm('Are you sure you want to end this allocation?')) return;
+    try {
+      await api.endAllocation(id);
+      fetchAllocations();
+    } catch (err: any) {
+      alert(err.message || 'Failed to end allocation');
+    }
+  };
+
   const displayedAllocations = allocationsPage?.content.filter(alloc => 
     (alloc.employeeName && alloc.employeeName.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (alloc.projectCode && alloc.projectCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -209,6 +228,7 @@ export const Allocations: React.FC = () => {
                   <th>Allocation %</th>
                   <th>Start Date</th>
                   <th>End Date</th>
+                  <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -223,15 +243,47 @@ export const Allocations: React.FC = () => {
                     </td>
                     <td>{alloc.startDate || '—'}</td>
                     <td>{alloc.endDate || '—'}</td>
+                    <td>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '4px',
+                        background: alloc.status === 'ACTIVE' ? '#D1FAE5' : alloc.status === 'ENDED' ? '#F3F4F6' : '#FEF3C7',
+                        color: alloc.status === 'ACTIVE' ? '#059669' : alloc.status === 'ENDED' ? '#4B5563' : '#D97706'
+                      }}>
+                        {alloc.status || 'PENDING'}
+                      </span>
+                    </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
-                        <button
-                          className="btn btn-secondary btn-icon"
-                          title="Edit"
-                          onClick={() => handleOpenEdit(alloc)}
-                        >
-                          <Edit2 size={16} />
-                        </button>
+                        {(alloc.status === 'PENDING' || !alloc.status) && (
+                          <button
+                            className="btn btn-secondary btn-icon"
+                            title="Activate"
+                            onClick={() => handleActivate(alloc.allocationId!)}
+                          >
+                            <Check size={16} />
+                          </button>
+                        )}
+                        {(alloc.status === 'PENDING' || !alloc.status || alloc.status === 'ACTIVE') && (
+                          <button
+                            className="btn btn-secondary btn-icon"
+                            title="End"
+                            onClick={() => handleEnd(alloc.allocationId!)}
+                          >
+                            <Power size={16} style={{ color: 'var(--color-danger)' }} />
+                          </button>
+                        )}
+                        {alloc.status !== 'ENDED' && (
+                          <button
+                            className="btn btn-secondary btn-icon"
+                            title="Edit"
+                            onClick={() => handleOpenEdit(alloc)}
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        )}
                         <button
                           className="btn btn-danger btn-icon"
                           title="Delete"

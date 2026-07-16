@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, Employee, EmployeePage, WorkloadResponse } from '../services/api';
-import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Loader2, AlertCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Loader2, AlertCircle, X, ChevronLeft, ChevronRight, Award } from 'lucide-react';
 
 export const Employees: React.FC = () => {
   const [employeesPage, setEmployeesPage] = useState<EmployeePage | null>(null);
@@ -17,6 +17,17 @@ export const Employees: React.FC = () => {
   // Workload Modal/Detail View
   const [selectedWorkload, setSelectedWorkload] = useState<WorkloadResponse | null>(null);
   const [loadingWorkload, setLoadingWorkload] = useState(false);
+
+  // Skills Manage Modal state
+  const [selectedSkillsEmployee, setSelectedSkillsEmployee] = useState<Employee | null>(null);
+  const [employeeSkills, setEmployeeSkills] = useState<{ skillId: number; skillName: string }[]>([]);
+  const [loadingSkills, setLoadingSkills] = useState(false);
+  const [newSkillsInput, setNewSkillsInput] = useState('');
+
+  // Skill Search state
+  const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [searchedSkill, setSearchedSkill] = useState('');
+  const [skillSearchResults, setSkillSearchResults] = useState<{ employeeName: string; available: number }[] | null>(null);
 
   // Form Modal state
   const [showModal, setShowModal] = useState(false);
@@ -118,6 +129,61 @@ export const Employees: React.FC = () => {
     }
   };
 
+  const handleOpenSkills = async (emp: Employee) => {
+    setSelectedSkillsEmployee(emp);
+    setNewSkillsInput('');
+    setEmployeeSkills([]);
+    try {
+      setLoadingSkills(true);
+      const list = await api.getEmployeeSkills(emp.employeeId!);
+      setEmployeeSkills(list);
+    } catch (err: any) {
+      alert(err.message || 'Failed to load employee skills');
+    } finally {
+      setLoadingSkills(false);
+    }
+  };
+
+  const handleSaveSkills = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSkillsEmployee) return;
+    const skillList = newSkillsInput
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    
+    if (skillList.length === 0) return;
+
+    try {
+      setLoadingSkills(true);
+      await api.assignEmployeeSkills(selectedSkillsEmployee.employeeId!, skillList);
+      const list = await api.getEmployeeSkills(selectedSkillsEmployee.employeeId!);
+      setEmployeeSkills(list);
+      setNewSkillsInput('');
+    } catch (err: any) {
+      alert(err.message || 'Failed to save skills');
+    } finally {
+      setLoadingSkills(false);
+    }
+  };
+
+  const handleSearchBySkill = async () => {
+    if (!skillSearchQuery.trim()) return;
+    try {
+      const results = await api.searchEmployeesBySkill(skillSearchQuery.trim());
+      setSkillSearchResults(results);
+      setSearchedSkill(skillSearchQuery.trim());
+    } catch (err: any) {
+      alert(err.message || 'Failed to search by skill');
+    }
+  };
+
+  const handleClearSkillSearch = () => {
+    setSkillSearchQuery('');
+    setSearchedSkill('');
+    setSkillSearchResults(null);
+  };
+
   // Filter clientside search
   const displayedEmployees = employeesPage?.content.filter(emp => 
     emp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -176,6 +242,48 @@ export const Employees: React.FC = () => {
         </select>
       </div>
 
+      {/* Skill Search utility */}
+      <div className="filter-bar" style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'stretch', padding: '1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)' }}>
+        <div style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
+          <Search size={16} /> Search Employees by Skill Name (Resource Search)
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            type="text"
+            className="form-control"
+            style={{ maxWidth: '280px', height: '36px' }}
+            placeholder="Enter skill name (e.g. Java)..."
+            value={skillSearchQuery}
+            onChange={(e) => setSkillSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearchBySkill()}
+          />
+          <button className="btn btn-secondary" style={{ height: '36px' }} onClick={handleSearchBySkill}>Search</button>
+          {searchedSkill && (
+            <button className="btn btn-secondary" style={{ height: '36px' }} onClick={handleClearSkillSearch}>Clear</button>
+          )}
+        </div>
+        
+        {skillSearchResults && (
+          <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Search Results for Skill: "{searchedSkill}"</h4>
+            {skillSearchResults.length === 0 ? (
+              <p style={{ fontStyle: 'italic', fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>No employees found possessing this skill.</p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                {skillSearchResults.map((res, index) => (
+                  <div key={index} style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                    <span style={{ fontWeight: 500 }}>{res.employeeName}</span>
+                    <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 600, background: res.available > 0 ? 'var(--color-success-bg)' : 'var(--bg-tertiary)', color: res.available > 0 ? 'var(--color-success)' : 'var(--text-secondary)' }}>
+                      {res.available}% free
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Loading state */}
       {loading ? (
         <div className="spinner-container">
@@ -224,6 +332,13 @@ export const Employees: React.FC = () => {
                           onClick={() => handleViewWorkload(emp.employeeId!)}
                         >
                           <Eye size={16} />
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-icon"
+                          title="Manage Skills"
+                          onClick={() => handleOpenSkills(emp)}
+                        >
+                          <Award size={16} />
                         </button>
                         <button
                           className="btn btn-secondary btn-icon"
@@ -293,8 +408,8 @@ export const Employees: React.FC = () => {
               <div className="workload-summary">
                 <div className="workload-stat">
                   <span>Total Allocated:</span>
-                  <span style={{ color: selectedWorkload.totalAllocation > 90 ? 'var(--color-danger)' : 'inherit' }}>
-                    {selectedWorkload.totalAllocation}%
+                  <span style={{ color: selectedWorkload.allocated > 90 ? 'var(--color-danger)' : 'inherit' }}>
+                    {selectedWorkload.allocated}%
                   </span>
                 </div>
                 <div className="workload-stat">
@@ -413,6 +528,62 @@ export const Employees: React.FC = () => {
                 <button type="submit" className="btn btn-primary">Save Changes</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Skills Modal */}
+      {selectedSkillsEmployee && (
+        <div className="modal-overlay" onClick={() => setSelectedSkillsEmployee(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Manage Skills - {selectedSkillsEmployee.fullName}</h2>
+              <button className="close-btn" onClick={() => setSelectedSkillsEmployee(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Current Skills</h4>
+                {loadingSkills ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0' }}>
+                    <Loader2 className="spinner" size={16} />
+                    <span style={{ fontSize: '0.85rem' }}>Loading skills...</span>
+                  </div>
+                ) : employeeSkills.length === 0 ? (
+                  <p style={{ fontStyle: 'italic', fontSize: '0.85rem', color: 'var(--text-muted)' }}>No skills assigned yet.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', margin: '0.5rem 0 1rem 0' }}>
+                    {employeeSkills.map(sk => (
+                      <span key={sk.skillId} className="badge badge-active" style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: 'rgb(99, 102, 241)' }}>
+                        {sk.skillName}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleSaveSkills} style={{ marginTop: '1.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: 600 }}>Assign New Skills</label>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0 0 0.5rem 0' }}>Enter skill names separated by commas (e.g. Java, Docker, React)</p>
+                  <input
+                    type="text"
+                    required
+                    className="form-control"
+                    placeholder="e.g. Java, React, SQL"
+                    value={newSkillsInput}
+                    onChange={e => setNewSkillsInput(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setSelectedSkillsEmployee(null)}>Close</button>
+                  <button type="submit" className="btn btn-primary" disabled={loadingSkills}>
+                    {loadingSkills ? <Loader2 className="spinner" size={16} /> : 'Assign'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

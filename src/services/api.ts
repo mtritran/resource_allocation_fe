@@ -25,7 +25,7 @@ export interface WorkloadAllocation {
 export interface WorkloadResponse {
   employeeId: number;
   employeeName: string;
-  totalAllocation: number;
+  allocated: number;
   available: number;
   allocations: WorkloadAllocation[];
 }
@@ -58,6 +58,7 @@ export interface Allocation {
   roleInProject?: string;
   startDate?: string;
   endDate?: string;
+  status?: 'PENDING' | 'ACTIVE' | 'ENDED';
 }
 
 export interface AllocationPage {
@@ -197,5 +198,21 @@ export const api = {
   askRiskDetection: (query: string) => request<AiRiskResponse>('/ai/risk-detection', {
     method: 'POST',
     body: JSON.stringify({ query }),
+  }),
+
+  // Skills & Search API
+  assignEmployeeSkills: (employeeId: number, skills: string[]) => request<void>(`/employees/${employeeId}/skills`, {
+    method: 'POST',
+    body: JSON.stringify(skills),
+  }),
+  getEmployeeSkills: (employeeId: number) => request<{ skillId: number; skillName: string }[]>(`/employees/${employeeId}/skills`),
+  searchEmployeesBySkill: (skillName: string) => request<{ employeeName: string; available: number }[]>(`/employees/search?skill=${encodeURIComponent(skillName)}`),
+
+  // Allocation Status Workflow API
+  activateAllocation: (id: number) => request<Allocation>(`/allocations/${id}/activate`, {
+    method: 'PUT',
+  }),
+  endAllocation: (id: number) => request<Allocation>(`/allocations/${id}/end`, {
+    method: 'PUT',
   }),
 };
